@@ -1,5 +1,3 @@
-Here is a comprehensive README.md file tailored for your project. It includes setup instructions, technology details, and the necessary medical disclaimers based on the code provided.
-
 🏥 AI Symptom Checker (Healthcare Chatbot)
 This project is an AI-powered health assistant that analyzes user-described symptoms to predict potential diseases. It uses a FastAPI backend to host a fine-tuned BioBERT model and serves a lightweight HTML/JavaScript frontend for user interaction.
 
@@ -74,6 +72,7 @@ healthcare-chatbot/
 ├── index.html           # User interface for symptom entry
 ├── requirements.txt     # Python dependencies
 └── README.md            # Project documentation
+
 ⚠️ Important Disclaimer
 This is an Artificial Intelligence project for educational and demonstration purposes only.
 
