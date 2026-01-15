@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> AI Heathcare System Checker</title>
+    <title>AI Healthcare System Checker</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,19 +14,86 @@
         <div><strong>Disclaimer:</strong> This is an AI research tool, not a medical diagnosis. If you are experiencing an emergency, please contact local medical services immediately.</div>
     </div>
 
-    <h2>🏥 Health Assistant</h2>
-    <p style="color: var(--text-muted); font-size: 0.9rem;">Powered by ClinicalBERT</p>
-    
-    <textarea id="symptoms" placeholder="Describe your symptoms in detail (e.g., Duration, severity, specific pains)..."></textarea>
-    
-    <button id="submitBtn" onclick="checkSymptoms()">Analyze Symptoms</button>
+    <header>
+        <h2>🏥 Health Assistant</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Powered by ClinicalBERT</p>
+    </header>
 
-    <div id="result"></div>
+    <div class="main-layout">
+        <div class="interaction-area">
+            <textarea id="symptoms" placeholder="Describe your symptoms in detail (e.g., Duration, severity, specific pains)..."></textarea>
+            
+            <div class="upload-group">
+                <label for="imageInput" style="cursor: pointer;">
+                    <strong>📸 Add Photo (Optional)</strong><br>
+                    <small>Upload images of rashes or physical symptoms</small>
+                </label>
+                <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)" style="margin-top: 10px; display: block; width: 100%;">
+                <img id="preview" class="image-preview" src="#" alt="Symptom preview">
+            </div>
+
+            <button id="submitBtn" onclick="checkSymptoms()">Analyze Symptoms</button>
+
+            <div id="result"></div>
+        </div>
+
+        <aside class="optional-sidebar">
+            <h4 style="margin-top:0;">Optional Data</h4>
+            
+            <div class="input-field">
+                <label>Body Temp (°C)</label>
+                <input type="number" id="temp" placeholder="37.0" step="0.1">
+            </div>
+
+            <div class="input-field">
+                <label>Your Location</label>
+                <input type="text" id="location" placeholder="City or Zip">
+            </div>
+
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 15px;">
+                Location data helps track local health trends and outbreaks.
+            </p>
+        </aside>
+    </div>
+
+    <section class="faq-section" id="faq">
+        <h3>Frequently Asked Questions</h3>
+        <details>
+            <summary>What is ClinicalBERT?</summary>
+            <p>ClinicalBERT is a specialized AI model trained on clinical notes to understand complex medical language and symptom descriptions.</p>
+        </details>
+        <details>
+            <summary>How do I upload a photo?</summary>
+            <p>Click the "Add Photo" box above. This is helpful for conditions with visible symptoms like skin rashes or swelling.</p>
+        </details>
+        <details>
+            <summary>Is this a real diagnosis?</summary>
+            <p>No. This tool provides classifications based on patterns. Always consult a licensed medical professional.</p>
+        </details>
+    </section>
 </div>
 
 <script>
+    // Image Preview logic
+    function previewImage(event) {
+        const preview = document.getElementById('preview');
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
     async function checkSymptoms() {
         const text = document.getElementById("symptoms").value;
+        const temp = document.getElementById("temp").value;
+        const location = document.getElementById("location").value;
+        const imageFile = document.getElementById("imageInput").files[0];
+        
         const resultDiv = document.getElementById("result");
         const btn = document.getElementById("submitBtn");
         
@@ -41,11 +108,18 @@
         resultDiv.style.display = "block";
         resultDiv.innerHTML = "<p style='text-align:center; color: #666;'>Processing clinical data...</p>";
 
+        // Using FormData to support file uploads
+        const formData = new FormData();
+        formData.append("text", text);
+        if (temp) formData.append("temperature", temp);
+        if (location) formData.append("location", location);
+        if (imageFile) formData.append("image", imageFile);
+
         try {
             const response = await fetch("http://127.0.0.1:8000/predict", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: text })
+                body: formData 
+                // Content-Type header is automatically set by the browser for FormData
             });
 
             const data = await response.json();
