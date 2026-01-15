@@ -3,60 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Symptom Checker</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background-color: #f4f4f9; }
-        textarea { width: 100%; height: 100px; margin-bottom: 10px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-        button { background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #218838; }
-        #result { margin-top: 20px; padding: 15px; background: white; border-radius: 5px; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .loading { color: #666; font-style: italic; }
-    </style>
+    <title> AI Heathcare System Checker</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <h2>🏥 AI Health Assistant</h2>
-    <p>Describe your symptoms in detail:</p>
+<div class="container">
+    <div class="disclaimer-top">
+        <span>⚠️</span>
+        <div><strong>Disclaimer:</strong> This is an AI research tool, not a medical diagnosis. If you are experiencing an emergency, please contact local medical services immediately.</div>
+    </div>
+
+    <h2>🏥 Health Assistant</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Powered by ClinicalBERT</p>
     
-    <textarea id="symptoms" placeholder="e.g., I have a high fever, severe headache, and I am sensitive to light..."></textarea>
-    <br>
-    <button onclick="checkSymptoms()">Analyze Symptoms</button>
+    <textarea id="symptoms" placeholder="Describe your symptoms in detail (e.g., Duration, severity, specific pains)..."></textarea>
+    
+    <button id="submitBtn" onclick="checkSymptoms()">Analyze Symptoms</button>
 
     <div id="result"></div>
+</div>
 
-    <script>
-        async function checkSymptoms() {
-            const text = document.getElementById("symptoms").value;
-            const resultDiv = document.getElementById("result");
-            
-            if (!text) { alert("Please enter some symptoms!"); return; }
-
-            resultDiv.style.display = "block";
-            resultDiv.innerHTML = "<span class='loading'>Analyzing with ClinicalBERT...</span>";
-
-            try {
-                const response = await fetch("http://127.0.0.1:8000/predict", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text: text })
-                });
-
-                const data = await response.json();
-
-let outputHtml = "<h3>Top Predictions:</h3>";
-
-// Loop through the predictions
-data.top_predictions.forEach(item => {
-    outputHtml += `<p><strong>${item.disease}</strong>: ${item.confidence}</p>`;
-});
-
-outputHtml += "<small>⚠️ Disclaimer: This is an AI project, not a doctor.</small>";
-resultDiv.innerHTML = outputHtml;
-            } catch (error) {
-                resultDiv.innerHTML = "<p style='color:red'>Error connecting to AI server. Is it running?</p>";
-            }
+<script>
+    async function checkSymptoms() {
+        const text = document.getElementById("symptoms").value;
+        const resultDiv = document.getElementById("result");
+        const btn = document.getElementById("submitBtn");
+        
+        if (!text.trim()) {
+            alert("Please enter your symptoms before analyzing.");
+            return;
         }
-    </script>
+
+        // Setup Loading State
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> Analyzing...';
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = "<p style='text-align:center; color: #666;'>Processing clinical data...</p>";
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text })
+            });
+
+            const data = await response.json();
+            
+            let outputHtml = "<h4 style='margin-bottom:15px;'>Potential Classifications:</h4>";
+
+            data.top_predictions.forEach(item => {
+                const confPercent = item.confidence; 
+                outputHtml += `
+                    <div class="prediction-row">
+                        <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                            <span>${item.disease}</span>
+                            <strong>${confPercent}</strong>
+                        </div>
+                        <div class="bar-bg">
+                            <div class="bar-fill" style="width: ${confPercent}"></div>
+                        </div>
+                    </div>`;
+            });
+
+            resultDiv.innerHTML = outputHtml;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div style="color:var(--danger); text-align:center; font-size: 0.9rem;">
+                    <strong>Server Connection Failed</strong><br>
+                    Ensure your FastAPI/Python backend is running at localhost:8000
+                </div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Analyze Symptoms';
+        }
+    }
+</script>
 
 </body>
 </html>
