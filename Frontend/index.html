@@ -26,13 +26,13 @@
             <div class="upload-group">
                 <label for="imageInput" style="cursor: pointer;">
                     <strong>📸 Add Photo (Optional)</strong><br>
-                    <small>Upload images of rashes or physical symptoms</small>
+                    <small>Upload images of radiological images for analysis or  rashes or physical symptoms</small>
                 </label>
                 <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)" style="margin-top: 10px; display: block; width: 100%;">
                 <img id="preview" class="image-preview" src="#" alt="Symptom preview">
             </div>
 
-            <button id="submitBtn" onclick="checkSymptoms()">Analyze Symptoms</button>
+            <button id="submitBtn" onclick="checkSymptoms()">Analyze Symptoms and  an infromation</button>
 
             <div id="result"></div>
         </div>
