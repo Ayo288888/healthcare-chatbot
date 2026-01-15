@@ -1,0 +1,105 @@
+:root {
+    --primary: #2c3e50;
+    --accent: #3498db;
+    --success: #27ae60;
+    --danger: #e74c3c;
+    --bg: #f8f9fa;
+    --text-muted: #666;
+}
+
+body { 
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+    background-color: var(--bg);
+    color: var(--primary);
+    line-height: 1.6;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    background: white;
+    width: 100%;
+    max-width: 500px;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+/* Medical Disclaimer Banner */
+.disclaimer-top {
+    background: #fff3cd;
+    color: #856404;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #ffeeba;
+    display: flex;
+    gap: 8px;
+}
+
+h2 { margin-top: 0; color: var(--primary); font-weight: 700; }
+
+textarea { 
+    width: 100%; 
+    height: 120px; 
+    padding: 12px; 
+    border: 2px solid #eee;
+    border-radius: 8px; 
+    resize: none;
+    box-sizing: border-box;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+button { 
+    width: 100%;
+    background-color: var(--accent); 
+    color: white; 
+    padding: 14px; 
+    border: none; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    font-size: 1rem; 
+    font-weight: 600;
+    margin-top: 1rem;
+    transition: all 0.3s ease;
+}
+
+button:hover { background-color: #2980b9; }
+button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+#result { 
+    margin-top: 1.5rem; 
+    padding-top: 1rem; 
+    border-top: 1px solid #eee;
+    display: none; 
+}
+
+/* Results Visualization */
+.prediction-row { margin-bottom: 15px; }
+.bar-bg { background: #eee; border-radius: 10px; height: 8px; width: 100%; overflow: hidden; margin-top: 4px; }
+.bar-fill { background: var(--success); height: 100%; transition: width 0.8s cubic-bezier(0.1, 0.5, 0.5, 1); }
+
+/* Loading Animation */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
