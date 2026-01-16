@@ -3,3 +3,7 @@ uvicorn
 transformers
 torch
 pydantic
+python-multipart
+Pillow
+librosa
+soundfile
