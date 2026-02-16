@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 
-TEXT_MODEL_ID = "Iloriayomide/my-symptom-checker-biobert"
+TEXT_MODEL_ID = "Iloriayomide/Symptom_Prediction"
 IMAGE_MODEL_ID = "microsoft/resnet-50"
 VOICE_MODEL_ID = "openai/whisper-tiny"
 
@@ -43,6 +43,11 @@ class SymptomRequest(BaseModel):
 
 
 # --- ENDPOINTS ---
+@app.get("/")
+def read_root():
+    return {"message": "Healthcare Chatbot API is running. Please open index.html in your browser to use the interface."}
+
+
 @app.post("/predict/text")
 @app.post("/predict")
 def predict_text_symptoms(

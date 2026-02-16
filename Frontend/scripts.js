@@ -196,7 +196,8 @@ function handleFileUpload(event) {
                     id: Date.now() + Math.random(),
                     name: file.name,
                     size: formatFileSize(file.size),
-                    url: e.target.result
+                    url: e.target.result,
+                    file: file
                 };
                 
                 uploadedImages.push(imageData);
@@ -291,7 +292,8 @@ uploadArea.addEventListener('drop', (e) => {
                 id: Date.now() + Math.random(),
                 name: file.name,
                 size: formatFileSize(file.size),
-                url: event.target.result
+                url: event.target.result,
+                file: file
             };
             uploadedImages.push(imageData);
             displayImagePreviews();
@@ -376,7 +378,7 @@ function updateSeverity(val) {
 /* ========== ANALYSIS ENGINE ========== */
 let analysisHistory = [];
 
-function initiateScan() {
+async function initiateScan() {
     const text = document.getElementById("symptoms").value;
     if (text.length < 15) {
         showNotification('Please provide more details about your symptoms', 'warning');
@@ -397,52 +399,68 @@ function initiateScan() {
 
     let progress = 0;
     const progressInterval = setInterval(() => {
-        progress += Math.random() * 15;
-        if (progress > 95) progress = 95;
+        if (progress < 90) progress += Math.random() * 5;
         document.getElementById('progressFill').style.width = progress + '%';
         document.getElementById('progressText').textContent = Math.floor(progress) + '%';
     }, 200);
 
-    const stages = [
-        "ANALYZING SYMPTOM PATTERNS...",
-        "CROSS-REFERENCING MEDICAL DATA...",
-        "EVALUATING SEVERITY MARKERS...",
-        "GENERATING INSIGHTS...",
-        "FINALIZING NEURAL LINK..."
-    ];
-    
-    let i = 0;
-    const stageInterval = setInterval(() => {
-        if (i < stages.length) {
-            const status = document.getElementById("statusMsg");
-            status.style.opacity = 0;
-            setTimeout(() => {
-                status.textContent = stages[i++];
-                status.style.opacity = 1;
-            }, 300);
-        } else {
-            clearInterval(stageInterval);
-            clearInterval(progressInterval);
-            setTimeout(() => renderResults(text), 500);
+    try {
+        // 1. Prepare Text Analysis Request
+        const formData = new FormData();
+        formData.append('text', text);
+        const temp = document.getElementById('temperature').value;
+        if (temp) formData.append('temperature', temp);
+
+        // 2. Prepare Image Analysis Request (if images exist)
+        const imageRequestPromise = (uploadedImages.length > 0 && uploadedImages[0].file) 
+            ? (() => {
+                const imgFormData = new FormData();
+                imgFormData.append('file', uploadedImages[0].file);
+                return fetch('http://127.0.0.1:8000/predict/image', { method: 'POST', body: imgFormData });
+              })()
+            : Promise.resolve(null);
+
+        // 3. Execute Requests in Parallel
+        const [textResponse, imageResponse] = await Promise.all([
+            fetch('http://127.0.0.1:8000/predict', { method: 'POST', body: formData }),
+            imageRequestPromise
+        ]);
+
+        if (!textResponse.ok) throw new Error('Text analysis failed');
+        
+        const textData = await textResponse.json();
+        let imageData = null;
+        
+        if (imageResponse && imageResponse.ok) {
+            imageData = await imageResponse.json();
         }
-    }, 1400);
-    
-    incrementAnalysisCount();
+
+        // 4. Finalize UI
+        clearInterval(progressInterval);
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('progressText').textContent = '100%';
+        document.getElementById("statusMsg").textContent = "ANALYSIS COMPLETE";
+
+        setTimeout(() => renderResults(text, textData, imageData), 500);
+        incrementAnalysisCount();
+
+    } catch (error) {
+        clearInterval(progressInterval);
+        console.error(error);
+        output.innerHTML = `<div class="analysis-card"><h3 style="color:var(--danger)">Connection Error</h3><p>Could not connect to the AI model. Ensure the backend (main.py) is running.</p></div>`;
+    }
 }
 
-function renderResults(inputText) {
+function renderResults(inputText, textData, imageData) {
     scanSpeed = 2;
     const resultArea = document.getElementById("resultOutput");
-    const confidence = Math.floor(Math.random() * 10) + 88;
-    const temp = document.getElementById('temperature').value;
-    const severity = document.getElementById('severity').value;
-    const duration = document.getElementById('duration').value;
-
-    const analysis = generateAnalysis(inputText, temp, severity, duration);
+    
+    const analysis = processApiData(textData);
     
     // Generate image analysis section if images were uploaded
     let imageAnalysisHTML = '';
-    if (uploadedImages.length > 0) {
+    if (imageData && imageData.analysis) {
+        const imgPred = imageData.analysis[0];
         imageAnalysisHTML = `
             <div class="image-analysis-section">
                 <h4>🖼️ Visual Analysis</h4>
@@ -451,12 +469,19 @@ function renderResults(inputText) {
                         <div class="analyzed-image">
                             <img src="${img.url}" alt="${img.name}">
                             <div class="image-analysis-overlay">
-                                <span class="analysis-status">✓ Processed</span>
+                                <span class="analysis-status">✓ ${imgPred.condition}</span>
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <p class="image-analysis-note">Images have been analyzed for visual markers. ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''} processed successfully.</p>
+                <p class="image-analysis-note">Visual scan detected markers consistent with <strong>${imgPred.condition}</strong> (${imgPred.confidence}).</p>
+            </div>
+        `;
+    } else if (uploadedImages.length > 0) {
+        imageAnalysisHTML = `
+            <div class="image-analysis-section">
+                <h4>🖼️ Visual Analysis</h4>
+                <p class="image-analysis-note">Images uploaded but could not be processed by the vision model.</p>
             </div>
         `;
     }
@@ -468,7 +493,7 @@ function renderResults(inputText) {
                     <h3>🧬 Neural Scan Complete</h3>
                     <p class="scan-id">Scan ID: #${Date.now().toString().slice(-6)}</p>
                 </div>
-                <div class="confidence-badge">${confidence}%</div>
+                <div class="confidence-badge">${analysis.confidence}</div>
             </div>
             
             ${imageAnalysisHTML}
@@ -524,32 +549,34 @@ function renderResults(inputText) {
         }
     }, 100);
     
-    saveAnalysis(inputText, analysis, confidence);
+    saveAnalysis(inputText, analysis, analysis.confidence);
 }
 
-function generateAnalysis(text, temp, severity, duration) {
-    const patterns = [
-        'Seasonal Inflammatory Response',
-        'Upper Respiratory Pattern',
-        'Stress-Related Symptoms',
-        'Digestive System Response',
-        'Fatigue Syndrome Markers'
-    ];
+function processApiData(textData) {
+    const prediction = textData.top_predictions[0];
+    const disease = prediction.disease;
+    const confidenceStr = prediction.confidence; // e.g. "98.50%"
+    const confidenceVal = parseFloat(confidenceStr);
     
-    const risks = ['Low', 'Low', 'Medium', 'Medium', 'Low'];
-    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
-    const riskIndex = patterns.indexOf(pattern);
+    // Determine risk based on confidence or specific keywords (Simple logic for demo)
+    let risk = 'Low';
+    if (confidenceVal > 80) risk = 'High';
+    else if (confidenceVal > 50) risk = 'Medium';
+    
+    // If it's a "Simple Match" from rule engine, it's usually high certainty
+    if (confidenceStr.includes('Simple Match')) risk = 'Medium';
     
     return {
-        pattern: pattern,
-        risk: risks[riskIndex],
-        action: risks[riskIndex] === 'Low' ? 'Monitor symptoms' : 'Consider medical consultation',
-        insight: `Analysis indicates ${pattern.toLowerCase()}. ${temp && parseFloat(temp) > 37.5 ? 'Elevated temperature detected. ' : ''}Based on symptom duration and severity, ${risks[riskIndex].toLowerCase()} risk assessment.`,
+        pattern: disease,
+        confidence: confidenceStr,
+        risk: risk,
+        action: risk === 'High' ? 'Consult a Doctor' : 'Monitor Symptoms',
+        insight: `AI analysis identifies patterns consistent with <strong>${disease}</strong>. The model indicates a ${confidenceStr} match based on the symptoms provided.`,
         recommendations: [
-            'Stay well hydrated with plenty of fluids',
-            'Ensure adequate rest and sleep',
-            'Monitor symptom progression over 24-48 hours',
-            'Seek professional care if symptoms worsen'
+            'Consult a healthcare professional for accurate diagnosis',
+            'Monitor symptoms for any changes over the next 24 hours',
+            'Maintain hydration and rest',
+            'Seek immediate care if condition worsens'
         ]
     };
 }
