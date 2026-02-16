@@ -186,8 +186,14 @@ function onUserType() {
 /* ========== IMAGE UPLOAD HANDLING ========== */
 function handleFileUpload(event) {
     const files = Array.from(event.target.files);
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
     
     files.forEach(file => {
+        if (file.size > MAX_FILE_SIZE) {
+            showNotification(`File ${file.name} is too large. Limit is 10MB.`, 'warning');
+            return;
+        }
+
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
             
@@ -284,8 +290,14 @@ uploadArea.addEventListener('drop', (e) => {
     
     const files = Array.from(e.dataTransfer.files);
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
     
     imageFiles.forEach(file => {
+        if (file.size > MAX_FILE_SIZE) {
+            showNotification(`File ${file.name} is too large. Limit is 10MB.`, 'warning');
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = function(event) {
             const imageData = {
