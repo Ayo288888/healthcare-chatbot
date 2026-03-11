@@ -4,6 +4,7 @@ transformers
 torch
 pydantic
 python-multipart
+google-genai
+groq
+python-dotenv
 Pillow
-librosa
-soundfile
