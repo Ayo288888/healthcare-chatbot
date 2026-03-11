@@ -5,7 +5,7 @@ from transformers import pipeline, AutoTokenizer
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from google import genai
-from google.genai import errors # Critical for catching the rate limit
+from google.genai import errors
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -61,7 +61,7 @@ def perform_triage(raw_text: str):
         for r in local_results[0]
     ]
 
-    # SYSTEM PROMPT: Forces the AI to output beautiful HTML for the frontend
+    
     prompt = (
         f"USER SYMPTOMS: {raw_text}\n"
         f"AI ANALYSIS: {predictions}\n\n"
@@ -76,15 +76,15 @@ def perform_triage(raw_text: str):
         "<hr><p><small><em>DISCLAIMER: This is an AI tool and not a substitute for a human doctor.</em></small></p>"
     )
 
-    # THE WATERFALL FALLBACK LOGIC
+    
     try:
-        # Try the shiny new Gemini 3 engine first
+        
         response = client.models.generate_content(
             model="gemini-3-flash-preview",
             contents=prompt
         )
     except errors.ClientError as e:
-        # If Gemini 3 hits the 429 Quota limit, silently switch to Gemini 2.5
+        
         if e.code == 429:
             print("Gemini 3 limit reached. Executing fallback to Gemini 2.5 Flash...")
             response = client.models.generate_content(
@@ -92,7 +92,7 @@ def perform_triage(raw_text: str):
                 contents=prompt
             )
         else:
-            # If it's a different error (like bad API key), throw it normally
+            
             raise e
 
     return predictions, response.text
