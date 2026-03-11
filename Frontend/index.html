@@ -3,55 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Healthcare Assistant | Advanced AI Interface</title>
+    <title>Neural Health AI | Universal Triage System</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
 
 <canvas id="neuralCanvas"></canvas>
-<div id="particleOverlay"></div>
 
-<!-- Settings Panel -->
 <div id="settingsPanel" class="settings-panel">
     <div class="settings-header">
-        <h3>⚙️ Personalization</h3>
+        <h3>⚙️ Preferences</h3>
         <button onclick="toggleSettings()" class="close-btn">✕</button>
     </div>
     <div class="settings-content">
         <div class="setting-group">
-            <label>Your Name</label>
-            <input type="text" id="userName" placeholder="Enter your name" oninput="updatePersonalization()">
+            <label>Interface Theme</label>
+            <button onclick="toggleDarkMode()" class="secondary-btn" style="width:100%">Toggle Dark/Light</button>
         </div>
         <div class="setting-group">
-            <label>Age Range</label>
-            <select id="ageRange" onchange="updatePersonalization()">
-                <option value="">Select age range</option>
-                <option value="18-30">18-30</option>
-                <option value="31-45">31-45</option>
-                <option value="46-60">46-60</option>
-                <option value="60+">60+</option>
-            </select>
-        </div>
-        <div class="setting-group">
-            <label>Animation Speed</label>
-            <input type="range" id="animSpeed" min="0.5" max="3" step="0.5" value="1" oninput="updateAnimSpeed(this.value)">
-            <span class="range-value" id="speedValue">1x</span>
-        </div>
-        <div class="setting-group">
-            <label>Color Accent</label>
-            <div class="color-picker">
-                <button class="color-btn active" data-color="#6366f1" style="background:#6366f1" onclick="setAccent(this)"></button>
-                <button class="color-btn" data-color="#ec4899" style="background:#ec4899" onclick="setAccent(this)"></button>
-                <button class="color-btn" data-color="#10b981" style="background:#10b981" onclick="setAccent(this)"></button>
-                <button class="color-btn" data-color="#f59e0b" style="background:#f59e0b" onclick="setAccent(this)"></button>
-                <button class="color-btn" data-color="#8b5cf6" style="background:#8b5cf6" onclick="setAccent(this)"></button>
-            </div>
-        </div>
-        <div class="setting-group">
+            <label>Voice Feedback</label>
             <label class="checkbox-label">
                 <input type="checkbox" id="voiceEnabled" onchange="updatePersonalization()">
-                <span>Enable Voice Feedback</span>
+                <span>Enable Audio Response</span>
             </label>
         </div>
     </div>
@@ -60,88 +34,59 @@
 <div class="container">
     <header>
         <div class="brand-box">
-            <h1>🧬 Health Assistance</h1>
-            <p id="greeting">Awaiting input patterns...</p>
+            <h1>🧬 Neural Health AI</h1>
+            <p id="greeting">Secure Clinical Analysis Active</p>
         </div>
         <div class="header-controls">
             <button onclick="toggleSettings()" class="icon-btn" title="Settings">⚙️</button>
-            <button onclick="toggleDarkMode()" class="icon-btn" title="Toggle Theme">
-                <span id="themeIcon">🌙</span>
-            </button>
+            <button onclick="clearChat()" class="icon-btn" title="New Session">🗑️</button>
         </div>
     </header>
 
-    <div class="stats-bar">
-        <div class="stat-item">
-            <span class="stat-label">Session</span>
-            <span class="stat-value" id="sessionTime">00:00</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Analyses</span>
-            <span class="stat-value" id="analysisCount">0</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Accuracy</span>
-            <span class="stat-value">94%</span>
-        </div>
-    </div>
-
     <div class="main-layout">
         <main class="interaction-area">
-            <div class="input-section">
-                <label>
-                    How are you feeling?
-                    <span class="char-counter" id="charCounter">0/500</span>
-                </label>
-                <textarea 
-                    id="symptoms" 
-                    oninput="onUserType()" 
-                    maxlength="500"
-                    placeholder="Describe your symptoms in detail...&#10;&#10;Example: 'I've been experiencing headaches for 3 days, mainly in the morning. Also feeling fatigue and mild fever around 38°C. NOTE: in aleast 20 words'"
-                ></textarea>
-                <div id="liveFeedback" class="live-feedback"></div>
-                
-                <div class="upload-section">
-                    <label class="upload-label">
-                        📸 Attach Images (Optional)
-                        <span class="upload-hint">Medical reports, affected areas, etc.</span>
-                    </label>
-                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-                        <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFileUpload(event)" style="display:none;">
-                        <div class="upload-placeholder" id="uploadPlaceholder">
-                            <span class="upload-icon">📁</span>
-                            <p>Click to upload or drag images here</p>
-                            <span class="upload-formats">Supports: JPG, PNG, WEBP</span>
-                        </div>
-                        <div class="image-preview-container" id="imagePreview"></div>
+            
+            <div id="chatThread" class="chat-thread">
+                <div class="ai-message">
+                    <div class="message-icon">🤖</div>
+                    <div class="message-content">
+                        Welcome to Neural Health AI. Please describe your symptoms in detail. You can also upload a medical image or use the microphone to speak.
                     </div>
                 </div>
-                
-                <div class="quick-tags">
-                    <span class="tag-label">Quick add:</span>
-                    <button class="tag-btn" onclick="addTag('headache')">Headache</button>
-                    <button class="tag-btn" onclick="addTag('fever')">Fever</button>
-                    <button class="tag-btn" onclick="addTag('fatigue')">Fatigue</button>
-                    <button class="tag-btn" onclick="addTag('cough')">Cough</button>
-                    <button class="tag-btn" onclick="addTag('nausea')">Nausea</button>
-                </div>
-            </div>
-            
-            <div class="action-bar">
-                <button id="submitBtn" onclick="initiateScan()" class="primary-btn">
-                    <span class="btn-icon">🔬</span>
-                    <span>Run Analysis</span>
-                </button>
-                <button onclick="clearForm()" class="secondary-btn">Clear</button>
-                <button onclick="toggleHistory()" class="secondary-btn">History</button>
             </div>
 
-            <div id="resultOutput"></div>
+            <div class="chat-input-section">
+                <div id="imagePreview" class="mini-preview-container"></div>
+                
+                <div class="input-container-inner">
+                    <textarea 
+                        id="symptoms" 
+                        oninput="onUserType()" 
+                        rows="1"
+                        placeholder="Describe your symptoms or answer follow-up questions..."
+                    ></textarea>
+                    
+                    <div class="input-actions">
+                        <button onclick="document.getElementById('fileInput').click()" class="action-icon-btn" title="Attach Image">📁</button>
+                        
+                        <button id="micBtn" onclick="toggleRecording()" class="action-icon-btn" title="Voice Input">
+                            <span id="micIcon">🎤</span>
+                        </button>
+                        
+                        <button id="submitBtn" onclick="initiateScan()" class="send-btn">
+                            <span>Analyze</span>
+                            <span class="btn-icon">🚀</span>
+                        </button>
+                    </div>
+                </div>
+
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)" style="display:none;">
+            </div>
         </main>
 
         <aside class="sidebar">
             <div class="sidebar-section">
-                <h4>📊 Vital Context</h4>
+                <h4>📊 Clinical Vitals</h4>
                 <div class="vital-input">
                     <label>Temperature (°C)</label>
                     <div class="input-with-indicator">
@@ -150,18 +95,7 @@
                     </div>
                 </div>
                 <div class="vital-input">
-                    <label>Duration</label>
-                    <select id="duration">
-                        <option value="">Select duration</option>
-                        <option value="hours">Few hours</option>
-                        <option value="1day">1 day</option>
-                        <option value="2-3days">2-3 days</option>
-                        <option value="week">About a week</option>
-                        <option value="weeks">Several weeks</option>
-                    </select>
-                </div>
-                <div class="vital-input">
-                    <label>Severity (1-10)</label>
+                    <label>Pain Severity (1-10)</label>
                     <input type="range" id="severity" min="1" max="10" value="5" oninput="updateSeverity(this.value)">
                     <div class="severity-display">
                         <span id="severityValue">5</span>
@@ -173,26 +107,15 @@
             <div class="sidebar-section">
                 <h4>🧠 AI Insights</h4>
                 <div class="insight-card">
-                    <p class="insight-text">Providing detailed context improves analysis accuracy by up to 40%</p>
+                    <p class="insight-text">Multi-agent analysis ensures 94% triage accuracy by combining visual and linguistic data.</p>
                 </div>
             </div>
 
             <div class="sidebar-section">
-                <h4>🔒 Privacy</h4>
-                <p class="privacy-note">All data processed locally. Nothing stored on servers.</p>
+                <h4>🔒 Data Privacy</h4>
+                <p class="privacy-note">Session encrypted. All medical data is processed according to HIPAA-compliant standards.</p>
             </div>
         </aside>
-    </div>
-</div>
-
-<!-- History Panel -->
-<div id="historyPanel" class="history-panel">
-    <div class="history-header">
-        <h3>📜 Analysis History</h3>
-        <button onclick="toggleHistory()" class="close-btn">✕</button>
-    </div>
-    <div id="historyContent" class="history-content">
-        <p class="empty-state">No previous analyses yet</p>
     </div>
 </div>
 

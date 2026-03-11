@@ -1,146 +1,134 @@
-import io
-from typing import Any
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+import os
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from pydantic import BaseModel
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
+from groq import Groq
+from google import genai
+from google.genai import errors # Critical for catching the rate limit
+from dotenv import load_dotenv
 
+load_dotenv()
 
 app = FastAPI()
 
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows local HTML file to call this API
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# --- CONFIG ---
+gemini_key = os.getenv("GEMINI_API_KEY")
+groq_key = os.getenv("GROQ_API_KEY")
 
-TEXT_MODEL_ID = "Iloriayomide/Symptom_Prediction"
-IMAGE_MODEL_ID = "microsoft/resnet-50"
-VOICE_MODEL_ID = "openai/whisper-tiny"
+if not groq_key or not gemini_key:
+    raise ValueError("API Keys missing! Check your .env file.")
 
-print("--- Loading Multi-Agent System ---")
-print(f"Loading Text Agent: {TEXT_MODEL_ID}...")
-text_classifier = pipeline("text-classification", model=TEXT_MODEL_ID)
+client = genai.Client(api_key=gemini_key)
+groq_client = Groq(api_key=groq_key)
 
-print(f"Loading Vision Agent: {IMAGE_MODEL_ID}...")
-image_classifier = pipeline("image-classification", model=IMAGE_MODEL_ID)
-
-print(f"Loading Voice Agent: {VOICE_MODEL_ID}...")
-voice_processor = pipeline(
-    "automatic-speech-recognition",
-    model=VOICE_MODEL_ID
+# --- LOCAL MODEL ---
+CUSTOM_MODEL_ID = "Iloriayomide/Symptom_Prediction"
+tokenizer = AutoTokenizer.from_pretrained(CUSTOM_MODEL_ID)
+text_classifier = pipeline(
+    "text-classification",
+    model=CUSTOM_MODEL_ID,
+    tokenizer=tokenizer,
+    top_k=5
 )
-print("--- All Agents Ready ---")
-
 
 class SymptomRequest(BaseModel):
     text: str
 
+def perform_triage(raw_text: str):
+    """
+    Analyzes symptoms using a custom local model and Cloud LLMs, 
+    with automatic fallback and HTML-structured UI formatting.
+    """
+    local_results = text_classifier(
+        raw_text,
+        truncation=True,
+        max_length=512
+    )
+    predictions = [
+        {
+            "condition": r['label'].title(),
+            "confidence": f"{round(r['score']*100, 2)}%"
+        }
+        for r in local_results[0]
+    ]
 
-# --- ENDPOINTS ---
-@app.get("/")
-def read_root():
-    return {"message": "Healthcare Chatbot API is running. Please open index.html in your browser to use the interface."}
+    # SYSTEM PROMPT: Forces the AI to output beautiful HTML for the frontend
+    prompt = (
+        f"USER SYMPTOMS: {raw_text}\n"
+        f"AI ANALYSIS: {predictions}\n\n"
+        "ACT AS: A Supportive Health Assistant.\n"
+        "TASK: Provide a response in simple, non-medical language.\n"
+        "CRITICAL UI INSTRUCTION: You must format the output strictly using clean HTML tags. "
+        "DO NOT use Markdown asterisks (**). Format EXACTLY like this structure:\n\n"
+        "<h4>🩺 Assessment</h4><p>[Explain what might be happening]</p>\n"
+        "<h4>🩹 Immediate Relief</h4><ul><li>[Step 1]</li><li>[Step 2]</li></ul>\n"
+        "<h4>💊 Pharmacy Advice</h4><p>[What to ask a pharmacist for]</p>\n"
+        "<h4>🚨 RED FLAGS (When to see a doctor)</h4><ul><li>[Warning sign 1]</li></ul>\n"
+        "<hr><p><small><em>DISCLAIMER: This is an AI tool and not a substitute for a human doctor.</em></small></p>"
+    )
 
-
-@app.post("/predict/text")
-@app.post("/predict")
-def predict_text_symptoms(
-    text: str = Form(...),
-    temperature: str = Form(None),
-    location: str = Form(None),
-    image: UploadFile = File(None)
-):
-    """Agent 1: Analyzes text symptoms with Smart Guardrails"""
+    # THE WATERFALL FALLBACK LOGIC
     try:
-        text_lower = text.lower()
-        if len(text) < 60:
-            common_conditions = {
-                "cold": "Common Cold",
-                "flu": "Influenza",
-                "runny nose": "Rhinitis"
+        # Try the shiny new Gemini 3 engine first
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt
+        )
+    except errors.ClientError as e:
+        # If Gemini 3 hits the 429 Quota limit, silently switch to Gemini 2.5
+        if e.code == 429:
+            print("Gemini 3 limit reached. Executing fallback to Gemini 2.5 Flash...")
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+        else:
+            # If it's a different error (like bad API key), throw it normally
+            raise e
 
-            }
+    return predictions, response.text
 
-            for key, disease_name in common_conditions.items():
-                if key in text_lower:
-                    return {
-                        "top_predictions": [
-                            {
-                                "disease": disease_name,
-                                "confidence": "100.00% (Simple Match)"
-                            }
-                        ],
-                        "status": "success",
-                        "agent": "Rule_Based_Engine"
-                    }
 
-        #  AI MODEL INFERENCE
-        results = text_classifier(text, top_k=3)
-        predictions = []
-        for res in results:
-            predictions.append({
-                "disease": res['label'],
-                "confidence": f"{round(res['score'] * 100, 2)}%"
-            })
-
+@app.post("/predict")
+def predict_text(request: SymptomRequest):
+    try:
+        predictions, note = perform_triage(request.text)
         return {
-            "top_predictions": predictions,
-            "status": "success",
-            "agent": "Text_BioBERT"
+            "top_predictions": predictions[:3],
+            "doctor_note": note,
+            "status": "success"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/predict/image")
-async def predict_xray(file: UploadFile = File(...)):
-    """Agent 2: Analyzes uploaded images (e.g., X-rays)"""
-    try:
-
-        image_data = await file.read()
-        image = Image.open(io.BytesIO(image_data))
-        results = image_classifier(image)
-        predictions = []
-        for res in results:
-            predictions.append({
-                "condition": res['label'],
-                "confidence": f"{round(res['score'] * 100, 2)}%"
-            })
-
-        return {
-            "analysis": predictions,
-            "status": "success",
-            "agent": "Vision_Model"
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Image processing failed: {str(e)}"
-        )
-
-
 @app.post("/predict/voice")
 async def predict_voice(file: UploadFile = File(...)):
-    """Agent 3: Transcribes voice and (Optional) sends to text analyzer"""
     try:
-        audio_data = await file.read()
-
-        transcription_result: Any = voice_processor(audio_data)
-        transcription = transcription_result["text"]
-        symptom_check = text_classifier(transcription, top_k=3)
-
+        audio_bytes = await file.read()
+        transcription = groq_client.audio.transcriptions.create(
+            file=("audio.wav", audio_bytes),
+            model="whisper-large-v3",
+        )
+        predictions, note = perform_triage(transcription.text)
         return {
-            "transcription": transcription,
-            "symptom_analysis": symptom_check,
-            "status": "success",
-            "agent": "Voice_Whisper"
+            "transcription": transcription.text,
+            "top_predictions": predictions[:3],
+            "doctor_note": note
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Voice processing failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
