@@ -1,14 +1,19 @@
-🏥 AI Symptom Checker (Healthcare Chatbot)
-This project is an AI-powered health assistant that analyzes user-described symptoms to predict potential diseases. It uses a FastAPI backend to host a fine-tuned BioBERT model and serves a lightweight HTML/JavaScript frontend for user interaction.
+AI Multi-Agent Healthcare System (Healthcare Chatbot)
+This project is an AI-powered health assistant that analyzes user-described symptoms to predict potential diseases and gives medical advice and sugestions. it  uses multi-modal FastAPI triage engine that combines a custom Hugging Face classification model developed by Ilori Ayomide, Gemini 3, Groq Whisper, and a custom CNN model developed by Adejare to deliver instant, voice-enabled patient care via a lightweight web UI.
 
-✨ Features
-Natural Language Processing: Accepts full-sentence descriptions of symptoms (e.g., "I have a high fever and severe headache").
+## 🚀 Key Features
 
-Top-K Predictions: Returns the top 3 most likely disease matches with confidence percentages.
+* **Multi-Agent Orchestration:** Uses a custom Hugging Face neural network developed by me (`Iloriayomide/Symptom_Prediction`) for rapid baseline classification, then passes the tensor outputs to Google's Gemini for natural language clinical reasoning.
+* **Voice-Activated Triage:** Integrates Groq's ultra-fast `whisper-large-v3` model, allowing patients to simply speak their symptoms instead of typing.
+* * **Image Upload ** Integrates Adejare's custom model, allowing patients to upload images for futher diagnosis.
+  * Top-K Predictions: Returns the top 3 most likely disease matches with confidence percentages.
+  * Natural Language Processing: Accepts full-sentence descriptions of symptoms (e.g., "I have a high fever and severe headache").
 
-Medical AI Model: Utilizes the Hugging Face model Iloriayomide/my-symptom-checker-biobert for classification.
-
-Simple Interface: Clean, responsive web UI for easy testing.
+## 🧠 The Tech Stack
+* **Backend:** FastAPI, Python, Uvicorn (Asynchronous REST API)
+* **Local Machine Learning:** Hugging Face `transformers`, PyTorch
+* **Cloud Intelligence:** Google GenAI SDK (Gemini 3 / 2.5), Groq Cloud (Whisper v3)
+* **Security:** `python-dotenv` for strict environment variable isolation
 
 🛠️ Tech Stack
 Python 3.12+
@@ -63,15 +68,6 @@ Click "Analyze Symptoms".
 
 View the top 3 predicted conditions and their confidence scores.
 
-📂 Project Structure
-Plaintext
-
-healthcare-chatbot/
-│
-├── main.py              # FastAPI backend and model inference logic
-├── index.html           # User interface for symptom entry
-├── requirements.txt     # Python dependencies
-└── README.md            # Project documentation
 
 ⚠️ Important Disclaimer
 This is an Artificial Intelligence project for educational and demonstration purposes only.
